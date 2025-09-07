@@ -29,7 +29,8 @@ import {
   ToggleLeft,
   ToggleRight,
   Plus,
-  CreditCard
+  CreditCard,
+  User
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,6 +42,9 @@ const mockInfluencers = [
     id: 1,
     name: "Maria Silva",
     email: "maria@email.com",
+    username: "maria_silva",
+    socialMedia: "@maria_silva_oficial",
+    password: "********",
     avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b1f7?w=150&h=150&fit=crop&crop=face",
     isActive: true,
     totalSales: 15750.00,
@@ -59,6 +63,9 @@ const mockInfluencers = [
     id: 2,
     name: "João Santos",
     email: "joao@email.com",
+    username: "joao_santos",
+    socialMedia: "@joao_santos_oficial",
+    password: "********",
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
     isActive: true,
     totalSales: 23450.00,
@@ -77,6 +84,9 @@ const mockInfluencers = [
     id: 3,
     name: "Ana Costa",
     email: "ana@email.com",
+    username: "ana_costa",
+    socialMedia: "@ana_costa_oficial",
+    password: "********",
     avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
     isActive: false,
     totalSales: 8920.00,
@@ -99,6 +109,7 @@ const AdminInfluencers = () => {
   const [influencers, setInfluencers] = useState(mockInfluencers);
   const [selectedInfluencer, setSelectedInfluencer] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [newSale, setNewSale] = useState({ amount: "", description: "" });
 
@@ -140,6 +151,21 @@ const AdminInfluencers = () => {
         description: "Informações do influencer foram salvas com sucesso.",
       });
       setEditDialogOpen(false);
+    }
+  };
+
+  const saveProfileData = () => {
+    if (selectedInfluencer) {
+      setInfluencers(prev => 
+        prev.map(inf => 
+          inf.id === selectedInfluencer.id ? selectedInfluencer : inf
+        )
+      );
+      toast({
+        title: "Perfil atualizado",
+        description: "Dados de perfil do influencer foram salvos com sucesso.",
+      });
+      setProfileDialogOpen(false);
     }
   };
 
@@ -277,6 +303,100 @@ const AdminInfluencers = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
+                            <Dialog open={profileDialogOpen && selectedInfluencer?.id === influencer.id} onOpenChange={setProfileDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedInfluencer(influencer)}
+                                  className="border-neon-blue text-neon-blue hover:bg-neon-blue/10"
+                                  title="Editar Perfil"
+                                >
+                                  <User className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="bg-gradient-card border-tech-blue-700/40">
+                                <DialogHeader>
+                                  <DialogTitle className="text-foreground">Editar Perfil do Influencer</DialogTitle>
+                                  <DialogDescription className="text-tech-blue-300">
+                                    Edite os dados de perfil que aparecerão para o influencer
+                                  </DialogDescription>
+                                </DialogHeader>
+                                {selectedInfluencer && (
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 gap-4">
+                                      <div>
+                                        <Label className="text-tech-blue-300">Nome Completo</Label>
+                                        <Input
+                                          value={selectedInfluencer.name}
+                                          onChange={(e) => setSelectedInfluencer({
+                                            ...selectedInfluencer,
+                                            name: e.target.value
+                                          })}
+                                          className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-tech-blue-300">Nome de Usuário</Label>
+                                        <Input
+                                          value={selectedInfluencer.username}
+                                          onChange={(e) => setSelectedInfluencer({
+                                            ...selectedInfluencer,
+                                            username: e.target.value
+                                          })}
+                                          className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-tech-blue-300">Email</Label>
+                                        <Input
+                                          type="email"
+                                          value={selectedInfluencer.email}
+                                          onChange={(e) => setSelectedInfluencer({
+                                            ...selectedInfluencer,
+                                            email: e.target.value
+                                          })}
+                                          className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-tech-blue-300">Mídia Social</Label>
+                                        <Input
+                                          value={selectedInfluencer.socialMedia}
+                                          onChange={(e) => setSelectedInfluencer({
+                                            ...selectedInfluencer,
+                                            socialMedia: e.target.value
+                                          })}
+                                          placeholder="@usuario_oficial"
+                                          className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-tech-blue-300">Nova Senha (deixe em branco para manter)</Label>
+                                        <Input
+                                          type="password"
+                                          placeholder="Nova senha..."
+                                          onChange={(e) => setSelectedInfluencer({
+                                            ...selectedInfluencer,
+                                            password: e.target.value || selectedInfluencer.password
+                                          })}
+                                          className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="flex space-x-2 pt-4">
+                                      <Button
+                                        onClick={saveProfileData}
+                                        className="flex-1 bg-neon-blue hover:bg-neon-blue/80 text-white"
+                                      >
+                                        Salvar Perfil
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </DialogContent>
+                            </Dialog>
+
                             <Dialog open={editDialogOpen && selectedInfluencer?.id === influencer.id} onOpenChange={setEditDialogOpen}>
                               <DialogTrigger asChild>
                                 <Button
@@ -284,6 +404,7 @@ const AdminInfluencers = () => {
                                   size="sm"
                                   onClick={() => setSelectedInfluencer(influencer)}
                                   className="border-tech-blue-600 text-tech-blue-300 hover:bg-tech-blue-800/30"
+                                  title="Editar Dados"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
