@@ -1,73 +1,129 @@
-# Welcome to your Lovable project
+# Partner Gate Pro - Sistema de Gestão de Afiliados
 
-## Project info
+Este é um sistema de gestão de afiliados e influenciadores construído com React + TypeScript + Vite e integrado com Supabase.
 
-**URL**: https://lovable.dev/projects/e1c16ab1-9ab6-4fa6-9f45-cf28290b158b
+## 🚀 Configuração do Projeto
 
-## How can I edit this code?
+### Pré-requisitos
+- Node.js 18+ 
+- npm ou yarn
+- Conta no Supabase
 
-There are several ways of editing your application.
+### 1. Instalação das Dependências
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/e1c16ab1-9ab6-4fa6-9f45-cf28290b158b) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install
 ```
 
-**Edit a file directly in GitHub**
+### 2. Configuração do Supabase
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+**⚠️ IMPORTANTE**: Este projeto requer configuração do Supabase para funcionar corretamente.
 
-**Use GitHub Codespaces**
+1. **Consulte o guia completo**: Leia o arquivo `SUPABASE_SETUP.md` para instruções detalhadas
+2. **Configure as variáveis de ambiente**: 
+   - Copie suas credenciais do Supabase
+   - Edite o arquivo `.env` na raiz do projeto
+   - Substitua os valores placeholder pelas suas credenciais reais
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 3. Executar o Projeto
 
-## What technologies are used for this project?
+```bash
+# Desenvolvimento
+npm run dev
 
-This project is built with:
+# Build para produção
+npm run build
+
+# Preview da build
+npm run preview
+```
+
+### 4. Testar a Conexão
+
+Após configurar o Supabase, acesse: `http://localhost:8080/debug/supabase`
+
+Esta página mostrará o status da conexão e ajudará a identificar problemas de configuração.
+
+## 🗃️ Estrutura do Banco de Dados
+
+O projeto utiliza as seguintes tabelas principais:
+
+- **users**: Usuários do sistema (influenciadores e administradores)
+- **withdrawal_requests**: Solicitações de saque dos influenciadores
+
+## 📁 Estrutura do Projeto
+
+```
+src/
+├── components/          # Componentes reutilizáveis
+├── pages/              # Páginas da aplicação
+├── lib/
+│   ├── db/            # Funções do banco de dados
+│   │   ├── users.ts   # Operações de usuários
+│   │   └── withdrawals.ts # Operações de saques
+│   └── supabaseClient.ts # Cliente Supabase
+├── types/
+│   └── database.ts    # Tipos TypeScript do banco
+└── features/          # Features específicas
+```
+
+## 🔧 Funcionalidades
+
+### Para Influenciadores
+- Dashboard com métricas pessoais
+- Solicitação de saques via PIX
+- Histórico de transações
+
+### Para Administradores
+- Gestão de influenciadores
+- Aprovação de saques
+- Relatórios financeiros
+
+## 🛠️ Scripts Disponíveis
+
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Faz build para produção
+- `npm run lint` - Executa ESLint
+- `npm run preview` - Preview da build de produção
+
+## 📚 Documentação
+
+- `SUPABASE_SETUP.md` - Guia completo de configuração do Supabase
+- Documentação do Supabase: https://supabase.com/docs
+
+## 🔒 Segurança
+
+- As credenciais do Supabase são carregadas via variáveis de ambiente
+- O arquivo `.env` está no `.gitignore` para evitar vazamento de credenciais
+- Row Level Security (RLS) configurado nas tabelas sensíveis
+
+## 🚨 Solução de Problemas
+
+### Erro de conexão com Supabase
+1. Verifique se as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão corretas
+2. Confirme se as tabelas foram criadas no banco
+3. Use a página `/debug/supabase` para diagnosticar problemas
+
+### Build falhando
+1. Execute `npm run lint` para verificar erros de código
+2. Verifique se todas as dependências estão instaladas
+3. Confirme se as variáveis de ambiente estão configuradas
+
+---
+
+## Projeto Lovable
+
+**URL do Projeto**: https://lovable.dev/projects/e1c16ab1-9ab6-4fa6-9f45-cf28290b158b
+
+### Tecnologias Utilizadas
 
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase
 
-## How can I deploy this project?
+### Deploy
 
-Simply open [Lovable](https://lovable.dev/projects/e1c16ab1-9ab6-4fa6-9f45-cf28290b158b) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Para fazer deploy, acesse [Lovable](https://lovable.dev/projects/e1c16ab1-9ab6-4fa6-9f45-cf28290b158b) e clique em Share → Publish.
