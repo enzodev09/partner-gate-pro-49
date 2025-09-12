@@ -8,6 +8,13 @@ import NotFound from "./pages/NotFound";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminInfluencers from "./pages/AdminInfluencers";
+import AdminFinancial from "./pages/AdminFinancial";
+import WithdrawStart from "./pages/withdraw/Start";
+import WithdrawMethod from "./pages/withdraw/Method";
+import WithdrawPix from "./pages/withdraw/Pix";
+import WithdrawConfirmed from "./pages/withdraw/Confirmed";
+import { WithdrawProvider } from "./features/withdraw/WithdrawContext";
+import DebugSupabase from "./pages/DebugSupabase";
 
 const queryClient = new QueryClient();
 
@@ -17,14 +24,22 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<InfluencerDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/influencers" element={<AdminInfluencers />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <WithdrawProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<InfluencerDashboard />} />
+            <Route path="/dashboard/withdraw" element={<WithdrawStart />} />
+            <Route path="/dashboard/withdraw/method" element={<WithdrawMethod />} />
+            <Route path="/dashboard/withdraw/pix" element={<WithdrawPix />} />
+            <Route path="/dashboard/withdraw/confirmed" element={<WithdrawConfirmed />} />
+            <Route path="/debug/supabase" element={<DebugSupabase />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/financial" element={<AdminFinancial />} />
+            <Route path="/admin/influencers" element={<AdminInfluencers />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </WithdrawProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

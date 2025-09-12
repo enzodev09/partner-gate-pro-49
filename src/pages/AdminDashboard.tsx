@@ -198,20 +198,42 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          {/* Painel Influencers */}
-          <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
-            <CardHeader>
-              <CardTitle className="text-foreground">Painel Influencers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => window.location.href = "/admin/influencers"}
-                className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white"
-              >
-                Gerenciar Influencers
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Navegação Admin */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
+              <CardHeader>
+                <CardTitle className="text-foreground">Financeiro</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-tech-blue-300 text-sm">
+                  Gerencie solicitações de saque e confirme pagamentos.
+                </p>
+                <Button 
+                  onClick={() => window.location.href = "/admin/financial"}
+                  className="w-full bg-neon-blue hover:bg-neon-blue/80 text-white"
+                >
+                  Abrir Financeiro
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
+              <CardHeader>
+                <CardTitle className="text-foreground">Painel Influencers</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-tech-blue-300 text-sm">
+                  Cadastre, edite e acompanhe os influencers da plataforma.
+                </p>
+                <Button 
+                  onClick={() => window.location.href = "/admin/influencers"}
+                  className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white"
+                >
+                  Gerenciar Influencers
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

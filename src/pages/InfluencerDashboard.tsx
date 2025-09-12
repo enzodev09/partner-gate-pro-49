@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +82,7 @@ const InfluencerDashboard = () => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   
   const affiliateLink = "https://hiveofclicks.com/ref/influencer01";
 
@@ -485,9 +487,7 @@ const InfluencerDashboard = () => {
                   <CardTitle className="text-foreground">Solicitação de Saque</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-tech-blue-300">
-                    Em breve você poderá solicitar o saque das suas comissões acumuladas
-                  </p>
+                  <p className="text-tech-blue-300">Solicite o saque das suas comissões acumuladas via PIX.</p>
                   <div className="bg-tech-blue-950/30 border border-tech-blue-700/30 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-tech-blue-300">Saldo disponível para saque:</span>
@@ -499,9 +499,9 @@ const InfluencerDashboard = () => {
                       Valor mínimo para saque: R$ 50,00
                     </p>
                   </div>
-                  <Button variant="outline" disabled className="border-tech-blue-700/50">
+                  <Button className="border-tech-blue-700/50" onClick={() => navigate('/dashboard/withdraw/method')}>
                     <Calendar className="w-4 h-4 mr-2" />
-                    Em Desenvolvimento
+                    Solicitar Saque
                   </Button>
                 </CardContent>
               </Card>
