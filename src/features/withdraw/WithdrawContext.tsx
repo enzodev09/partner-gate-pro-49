@@ -7,7 +7,6 @@ type WithdrawState = {
   pixKey: string;
   amount: number | null;
   deadlineISO: string | null; // agora + 1h após confirmar
-  lastRequestId?: string | null; // id do saque criado no Supabase (se disponível)
 };
 
 type WithdrawActions = {
@@ -15,11 +14,10 @@ type WithdrawActions = {
   setPixKey: (k: string) => void;
   setAmount: (v: number | null) => void;
   confirm: () => void; // seta deadline = now + 1h
-  setLastRequestId: (id: string | null) => void;
   reset: () => void;
 };
 
-const DEFAULT: WithdrawState = { method: null, pixKey: "", amount: null, deadlineISO: null, lastRequestId: null };
+const DEFAULT: WithdrawState = { method: null, pixKey: "", amount: null, deadlineISO: null };
 const STORAGE_KEY = "withdrawFlow";
 
 const Ctx = createContext<{ state: WithdrawState; actions: WithdrawActions } | null>(null);
@@ -50,7 +48,6 @@ export function WithdrawProvider({ children }: { children: React.ReactNode }) {
           const deadline = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // +1h
           return { ...s, deadlineISO: deadline };
         }),
-      setLastRequestId: (id) => setState((s) => ({ ...s, lastRequestId: id })),
       reset: () => setState(DEFAULT),
     }),
     []

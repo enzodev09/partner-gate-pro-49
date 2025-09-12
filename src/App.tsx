@@ -14,7 +14,7 @@ import WithdrawMethod from "./pages/withdraw/Method";
 import WithdrawPix from "./pages/withdraw/Pix";
 import WithdrawConfirmed from "./pages/withdraw/Confirmed";
 import { WithdrawProvider } from "./features/withdraw/WithdrawContext";
-import DebugSupabase from "./pages/DebugSupabase";
+// DebugSupabase removido
 
 const queryClient = new QueryClient();
 
@@ -32,7 +32,7 @@ const App = () => (
             <Route path="/dashboard/withdraw/method" element={<WithdrawMethod />} />
             <Route path="/dashboard/withdraw/pix" element={<WithdrawPix />} />
             <Route path="/dashboard/withdraw/confirmed" element={<WithdrawConfirmed />} />
-            <Route path="/debug/supabase" element={<DebugSupabase />} />
+            {/** rota de debug removida **/}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/financial" element={<AdminFinancial />} />
             <Route path="/admin/influencers" element={<AdminInfluencers />} />

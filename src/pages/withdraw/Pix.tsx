@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWithdraw } from "@/features/withdraw/WithdrawContext";
-import { createWithdrawalRequest } from "@/lib/db/withdrawals";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,30 +71,8 @@ export default function WithdrawPix() {
               actions.setAmount(amount);
               actions.confirm(); // define deadline +1h (front-only)
 
-              // Try to persist on Supabase (best-effort; keep UX even if it fails)
-              try {
-                if (state.method !== "PIX") throw new Error("Método inválido");
-                const { data: userRes } = await supabase.auth.getUser();
-                const userId = userRes?.user?.id ?? null;
-                const deadline = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-                const created = await createWithdrawalRequest({
-                  user_id: userId,
-                  method: "PIX",
-                  amount,
-                  pix_key: pixKey,
-                  status: "pending",
-                  deadline_at: deadline,
-                });
-                toast({ title: "Solicitação registrada", description: `ID: ${created.id ?? "-"}` });
-                actions.setLastRequestId(created.id ?? null);
-              } catch (e) {
-                // eslint-disable-next-line no-console
-                console.warn("Falha ao salvar solicitação no Supabase (seguindo só no front)", e);
-                toast({
-                  title: "Não foi possível salvar no banco",
-                  description: "Fluxo seguiu no front para você não perder tempo.",
-                });
-              }
+              // Modo front-only (Supabase removido temporariamente)
+              toast({ title: "Solicitação registrada", description: "Front-only (sem backend)." });
 
               navigate("/dashboard/withdraw/confirmed");
             }}

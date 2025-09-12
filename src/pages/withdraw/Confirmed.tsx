@@ -5,42 +5,13 @@ import { CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CenteredPage from "@/components/layout/CenteredPage";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function WithdrawConfirmed() {
   const { state } = useWithdraw();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [paid, setPaid] = useState(false);
-
-  useEffect(() => {
-    // Assina atualizações do registro específico, se tivermos o ID
-    if (!state.lastRequestId) return;
-    const channel = supabase
-      .channel(`withdrawal-status-${state.lastRequestId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'withdrawal_requests',
-          filter: `id=eq.${state.lastRequestId}`,
-        },
-        (payload: any) => {
-          const newStatus = payload?.new?.status;
-          if (newStatus === 'paid') {
-            setPaid(true);
-            toast({ title: 'Pagamento confirmado', description: 'Seu saque foi marcado como pago.' });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [state.lastRequestId, toast]);
+  const [paid] = useState(false);
 
   if (!state.deadlineISO) {
     return (
