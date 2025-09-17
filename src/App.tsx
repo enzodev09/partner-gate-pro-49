@@ -14,6 +14,7 @@ import WithdrawMethod from "./pages/withdraw/Method";
 import WithdrawPix from "./pages/withdraw/Pix";
 import WithdrawConfirmed from "./pages/withdraw/Confirmed";
 import { WithdrawProvider } from "./features/withdraw/WithdrawContext";
+import RequireAdmin from "./components/auth/RequireAdmin";
 // DebugSupabase removido
 
 const queryClient = new QueryClient();
@@ -33,9 +34,30 @@ const App = () => (
             <Route path="/dashboard/withdraw/pix" element={<WithdrawPix />} />
             <Route path="/dashboard/withdraw/confirmed" element={<WithdrawConfirmed />} />
             {/** rota de debug removida **/}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/financial" element={<AdminFinancial />} />
-            <Route path="/admin/influencers" element={<AdminInfluencers />} />
+            <Route
+              path="/admin"
+              element={
+                <RequireAdmin>
+                  <AdminDashboard />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/financial"
+              element={
+                <RequireAdmin>
+                  <AdminFinancial />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/influencers"
+              element={
+                <RequireAdmin>
+                  <AdminInfluencers />
+                </RequireAdmin>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Logo from "@/components/Logo";
 import { 
   DollarSign, 
   Users, 
@@ -23,27 +24,75 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabaseClient";
 
-// Dados de demonstração do admin
-const mockAdminData = {
-  stats: {
-    totalRevenue: 125750.50,
-    totalCommissions: 18862.58,
-    activeInfluencers: 23
-  },
-  profile: {
-    name: "Admin Sistema",
-    email: "admin@hiveofclicks.com",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-  }
-};
+const formatBRL = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 
 const AdminDashboard = () => {
-  const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+
+  // Query 1: total de faturamento (somatório do total_sales dos influencers)
+  const { data: influencers, isLoading: loadingInf, error: errorInf } = useQuery({
+    queryKey: ["admin_total_revenue"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("influencers")
+        .select("total_sales");
+      if (error) throw error;
+      return (data ?? []) as { total_sales: number }[];
+    },
+  });
+
+  // Query 2: comissões pagas (somatório de withdrawal_requests.amount com status='paid')
+  const { data: withdrawalsPaid, isLoading: loadingPaid, error: errorPaid } = useQuery({
+    queryKey: ["admin_total_commissions_paid"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("withdrawal_requests")
+        .select("amount,status")
+        .eq("status", "paid");
+      if (error) throw error;
+      return (data ?? []) as { amount: number; status: string }[];
+    },
+  });
+
+  // Query 3: influencers ativos (vendas últimos 30 dias)
+  const sinceISO = useMemo(() => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), []);
+  const { data: recentSales, isLoading: loadingRecent, error: errorRecent } = useQuery({
+    queryKey: ["admin_active_influencers", sinceISO],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("influencer_id,date")
+        .gte("date", sinceISO);
+      if (error) throw error;
+      return (data ?? []) as { influencer_id: string; date: string }[];
+    },
+  });
+
+  const totalRevenue = useMemo(() => {
+    if (!influencers) return 0;
+    return influencers.reduce((sum, r) => sum + (Number(r.total_sales) || 0), 0);
+  }, [influencers]);
+
+  const totalCommissionsPaid = useMemo(() => {
+    if (!withdrawalsPaid) return 0;
+    return withdrawalsPaid.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }, [withdrawalsPaid]);
+
+  const activeInfluencers = useMemo(() => {
+    if (!recentSales) return 0;
+    const ids = new Set<string>();
+    for (const s of recentSales) ids.add(s.influencer_id);
+    return ids.size;
+  }, [recentSales]);
+
+  const loading = loadingInf || loadingPaid || loadingRecent;
+  const hasError = errorInf || errorPaid || errorRecent;
 
   const handleLogout = () => {
-    // Aqui seria implementada a lógica de logout do admin
     window.location.href = "/";
   };
 
@@ -57,11 +106,7 @@ const AdminDashboard = () => {
         <header className="border-b border-tech-blue-700/30 bg-gradient-card/50 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-2 flex justify-between items-center">
             <div className="flex items-center space-x-4">
-              <img 
-                src="/logo-hive-of-clicks.png" 
-                alt="Hive of Clicks" 
-                className={isMobile ? "h-28 w-auto" : "h-40 w-auto"}
-              />
+                  <Logo className={isMobile ? "h-28 w-auto" : "h-40 w-auto"} />
               <Badge variant="outline" className="border-neon-purple text-neon-purple bg-neon-purple/10">
                 <Shield className="w-3 h-3 mr-1" />
                 Admin
@@ -70,11 +115,9 @@ const AdminDashboard = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className={`relative rounded-full ${isMobile ? 'h-10 w-10' : 'h-14 w-14'}`}>
-                  <Avatar className={isMobile ? "h-10 w-10" : "h-14 w-14"}>
-                    <AvatarImage src={mockAdminData.profile.avatar} alt={mockAdminData.profile.name} />
-                    <AvatarFallback className="bg-neon-purple/20 text-neon-purple">
-                      {mockAdminData.profile.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
+                    <Avatar className={isMobile ? "h-10 w-10" : "h-14 w-14"}>
+                    <AvatarImage src={"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"} alt={"Admin Sistema"} />
+                    <AvatarFallback className="bg-neon-purple/20 text-neon-purple">AD</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -82,21 +125,19 @@ const AdminDashboard = () => {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-3">
-                      <Avatar className={isMobile ? "h-12 w-12" : "h-16 w-16"}>
-                        <AvatarImage src={mockAdminData.profile.avatar} alt={mockAdminData.profile.name} />
-                        <AvatarFallback className="bg-neon-purple/20 text-neon-purple">
-                          {mockAdminData.profile.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
+                        <Avatar className={isMobile ? "h-12 w-12" : "h-16 w-16"}>
+                        <AvatarImage src={"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"} alt={"Admin Sistema"} />
+                        <AvatarFallback className="bg-neon-purple/20 text-neon-purple">AD</AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-medium leading-none text-foreground">
                           Painel Administrativo
                         </p>
                         <p className="text-xs leading-none text-tech-blue-300 mt-1">
-                          {mockAdminData.profile.name}
+                          Admin Sistema
                         </p>
                         <p className="text-xs leading-none text-tech-blue-400 mt-0.5">
-                          {mockAdminData.profile.email}
+                          admin@hiveofclicks.com
                         </p>
                       </div>
                     </div>
@@ -137,7 +178,7 @@ const AdminDashboard = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-            {/* Faturamento Total */}
+            {/* Faturamento Total (real) */}
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-base'}`}>
@@ -147,18 +188,18 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className={`font-bold text-foreground ${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                  R$ {mockAdminData.stats.totalRevenue.toLocaleString('pt-BR', { 
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2 
-                  })}
+                  {loading ? '—' : formatBRL(totalRevenue)}
                 </div>
                 <p className="text-sm text-tech-blue-400 mt-1">
                   Total de vendas realizadas
                 </p>
+                {hasError && (
+                  <p className="text-xs text-red-400 mt-1">Erro ao carregar dados.</p>
+                )}
               </CardContent>
             </Card>
 
-            {/* Comissões Totais */}
+            {/* Comissões Totais (pagas) */}
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-base'}`}>
@@ -168,18 +209,18 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className={`font-bold text-neon-purple ${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                  R$ {mockAdminData.stats.totalCommissions.toLocaleString('pt-BR', { 
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2 
-                  })}
+                  {loading ? '—' : formatBRL(totalCommissionsPaid)}
                 </div>
                 <p className="text-sm text-tech-blue-400 mt-1">
                   Pagas aos influencers
                 </p>
+                {hasError && (
+                  <p className="text-xs text-red-400 mt-1">Erro ao carregar dados.</p>
+                )}
               </CardContent>
             </Card>
 
-            {/* Influencers Ativos */}
+            {/* Influencers Ativos (últimos 30 dias) */}
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-base'}`}>
@@ -189,11 +230,14 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className={`font-bold text-neon-blue ${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                  {mockAdminData.stats.activeInfluencers}
+                  {loading ? '—' : activeInfluencers}
                 </div>
                 <p className="text-sm text-tech-blue-400 mt-1">
                   Com vendas no último mês
                 </p>
+                {hasError && (
+                  <p className="text-xs text-red-400 mt-1">Erro ao carregar dados.</p>
+                )}
               </CardContent>
             </Card>
           </div>

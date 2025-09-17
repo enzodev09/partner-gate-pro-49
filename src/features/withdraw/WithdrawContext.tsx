@@ -35,7 +35,9 @@ export function WithdrawProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {}
+    } catch {
+      // Ignore persistence errors; context will still work in-memory
+    }
   }, [state]);
 
   const actions: WithdrawActions = useMemo(

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import Logo from "@/components/Logo";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -17,20 +17,15 @@ import {
   LogOut,
   Calendar,
   Eye,
-  Menu,
-  User,
-  Settings,
   Mail,
-  Phone,
-  Instagram,
-  Twitter,
-  Facebook,
   MessageCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabaseClient"; // Import supabase client
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -40,42 +35,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Dados de demonstração
-const mockData = {
-  stats: {
-    totalSales: 0,
-    totalRevenue: 0,
-    commission: 0,
-    clicks: 0,
-    conversionRate: 0
-  },
-  profile: {
-    name: "Ana Silva",
-    email: "ana@influencer.com",
-    phone: "(11) 99999-9999",
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b742?w=150&h=150&fit=crop&crop=face",
-    social: {
-      instagram: "@anasilva",
-      twitter: "@anasilva",
-      facebook: "Ana Silva"
-    },
-    banking: {
-      bank: "Banco do Brasil",
-      agency: "1234-5",
-      account: "12345678-9",
-      pix: "ana@influencer.com"
-    }
-  },
-  recentSales: [],
-  salesChart: [
-    { date: "Jan 09", receita: 0 },
-    { date: "Jan 10", receita: 0 },
-    { date: "Jan 11", receita: 0 },
-    { date: "Jan 12", receita: 0 },
-    { date: "Jan 13", receita: 0 },
-    { date: "Jan 14", receita: 0 },
-    { date: "Jan 15", receita: 0 }
-  ]
+type InfluencerRow = {
+  id: string;
+  email: string;
+  username: string;
+  full_name: string | null;
+  affiliate_link: string | null;
+  total_sales: number;
+  total_commissions: number;
+  total_clicks: number;
+  total_sales_count: number;
+  pending_payment: number;
+};
+
+type SaleRow = {
+  id: string;
+  product: string;
+  customer: string;
+  value: number;
+  commission: number;
+  date: string;
 };
 
 const InfluencerDashboard = () => {
@@ -84,21 +63,61 @@ const InfluencerDashboard = () => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   
-  const affiliateLink = "https://hiveofclicks.com/ref/influencer01";
+  const currentId = typeof window !== 'undefined' ? window.localStorage.getItem("current_influencer_id") : null;
+
+  const { data: me } = useQuery({
+    queryKey: ["me_influencer", currentId],
+    enabled: !!currentId,
+    queryFn: async (): Promise<InfluencerRow | null> => {
+      if (!currentId) return null;
+      const { data, error } = await supabase
+        .from("influencers")
+  .select("*")
+        .eq("id", currentId)
+        .single();
+      if (error) throw error;
+      return data as unknown as InfluencerRow;
+    },
+  });
+
+  const { data: mySales } = useQuery({
+    queryKey: ["my_sales", currentId],
+    enabled: !!currentId,
+    queryFn: async (): Promise<SaleRow[]> => {
+      if (!currentId) return [];
+      const { data, error } = await supabase
+        .from("sales")
+        .select("id,product,customer,value,commission,date")
+        .eq("influencer_id", currentId)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return data as unknown as SaleRow[];
+    },
+  });
+
+  const affiliateLink = me?.affiliate_link || "";
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(affiliateLink);
     setCopied(true);
     toast({
-      title: "Link copiado!",
-      description: "Seu link de afiliado foi copiado para a área de transferência.",
+      title: "Link copiado",
+      description: "Copiado para a área de transferência.",
+      duration: 2000,
     });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleLogout = () => {
-    // Aqui seria implementada a lógica de logout
-    window.location.href = "/";
+    supabase.auth.signOut().finally(() => {
+      try {
+        window.localStorage.removeItem("current_influencer_id");
+        window.localStorage.removeItem("current_influencer_email");
+      } catch {
+        // Intentionally ignore storage cleanup errors (e.g., private mode)
+      }
+      window.location.href = "/";
+    });
   };
 
   const handleWhatsAppSupport = () => {
@@ -107,6 +126,57 @@ const InfluencerDashboard = () => {
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
+
+  // Histórico de saques pagos (simples: por enquanto, lista todos pagos)
+  type PaidWithdrawal = { method: string; amount: number; paid_at: string | null };
+  const { data: paid, isLoading: loadingPaid, isError: paidError, error: paidErrObj, refetch: refetchPaid, isFetching: fetchingPaid } = useQuery({
+    queryKey: ["paid_withdrawals", currentId],
+    queryFn: async (): Promise<PaidWithdrawal[]> => {
+      if (!currentId) return [];
+      const { data, error } = await supabase
+        .from("withdrawal_requests")
+        .select("method, amount, paid_at, status")
+        .eq("user_id", currentId)
+        .eq("status", "paid")
+        .order("paid_at", { ascending: false });
+      if (error) throw error;
+      // map to safe type without using any
+      type Row = { method: string; amount: number; paid_at: string | null };
+      const rows = (data ?? []) as Row[];
+      return rows.map((r) => ({ method: r.method, amount: r.amount, paid_at: r.paid_at ?? null }));
+    },
+  });
+
+  const paidRows = useMemo(() => paid ?? [], [paid]);
+  const formatBRL = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+  const formatDateTime = (iso?: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("pt-BR");
+  };
+
+  // Verifica horário comercial de Brasília (9h–19h)
+  const withinBusinessHours = useMemo(() => {
+    try {
+      const parts = new Intl.DateTimeFormat('pt-BR', {
+        hour: 'numeric',
+        hour12: false,
+        timeZone: 'America/Sao_Paulo',
+      }).formatToParts(new Date());
+      const hourStr = parts.find(p => p.type === 'hour')?.value ?? '';
+      const hour = parseInt(hourStr, 10);
+      if (Number.isNaN(hour)) {
+        const fallback = new Date().getHours();
+        return fallback >= 9 && fallback < 19;
+      }
+      return hour >= 9 && hour < 19;
+    } catch {
+      // Fallback para horário local
+      const h = new Date().getHours();
+      return h >= 9 && h < 19;
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-background relative">
@@ -118,19 +188,15 @@ const InfluencerDashboard = () => {
         <header className="border-b border-tech-blue-700/30 bg-gradient-card/50 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-2 flex justify-between items-center">
             <div className="flex items-center">
-              <img 
-                src="/logo-hive-of-clicks.png" 
-                alt="Hive of Clicks" 
-                className={isMobile ? "h-28 w-auto" : "h-40 w-auto"}
-              />
+              <Logo className={isMobile ? "h-28 w-auto" : "h-40 w-auto"} />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className={`relative rounded-full ${isMobile ? 'h-10 w-10' : 'h-14 w-14'}`}>
                   <Avatar className={isMobile ? "h-10 w-10" : "h-14 w-14"}>
-                    <AvatarImage src={mockData.profile.avatar} alt={mockData.profile.name} />
+                    <AvatarImage src={"https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(me?.full_name || me?.username || me?.email || "User")} alt={me?.full_name || me?.username || me?.email || "User"} />
                     <AvatarFallback className="bg-neon-blue/20 text-neon-blue">
-                      {mockData.profile.name.split(' ').map(n => n[0]).join('')}
+                      {(me?.full_name || me?.username || me?.email || "U").split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -140,17 +206,15 @@ const InfluencerDashboard = () => {
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-3">
                       <Avatar className={isMobile ? "h-12 w-12" : "h-16 w-16"}>
-                        <AvatarImage src={mockData.profile.avatar} alt={mockData.profile.name} />
+                        <AvatarImage src={"https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(me?.full_name || me?.username || me?.email || "User")} alt={me?.full_name || me?.username || me?.email || "User"} />
                         <AvatarFallback className="bg-neon-blue/20 text-neon-blue">
-                          {mockData.profile.name.split(' ').map(n => n[0]).join('')}
+                          {(me?.full_name || me?.username || me?.email || "U").split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium leading-none text-foreground">
-                          Perfil do Influencer
-                        </p>
+                        <p className="text-sm font-medium leading-none text-foreground">Perfil do Influencer</p>
                         <p className="text-xs leading-none text-tech-blue-300 mt-1">
-                          {mockData.profile.name}
+                          {me?.full_name || me?.username || me?.email}
                         </p>
                       </div>
                     </div>
@@ -161,33 +225,11 @@ const InfluencerDashboard = () => {
                 
                 <div className="p-3 space-y-3">
                   <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-tech-blue-300 uppercase tracking-wider">
-                      Dados Pessoais
-                    </h4>
+                    <h4 className="text-xs font-semibold text-tech-blue-300 uppercase tracking-wider">Dados Pessoais</h4>
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2 text-sm">
                         <Mail className="h-3 w-3 text-tech-blue-400" />
-                        <span className="text-foreground">{mockData.profile.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Phone className="h-3 w-3 text-tech-blue-400" />
-                        <span className="text-foreground">{mockData.profile.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-tech-blue-300 uppercase tracking-wider">
-                      Redes Sociais
-                    </h4>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Instagram className="h-3 w-3 text-tech-blue-400" />
-                        <span className="text-foreground">{mockData.profile.social.instagram}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Twitter className="h-3 w-3 text-tech-blue-400" />
-                        <span className="text-foreground">{mockData.profile.social.twitter}</span>
+                        <span className="text-foreground">{me?.email}</span>
                       </div>
                     </div>
                   </div>
@@ -209,75 +251,65 @@ const InfluencerDashboard = () => {
         </header>
 
         <div className="container mx-auto px-4 py-4 md:py-8">
-          {/* Stats Cards */}
+          {/* Stats Cards - usando dados reais */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  {isMobile ? 'Vendas' : 'Total de Vendas'}
+                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                  Total de Vendas
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-neon-blue" />
+                <TrendingUp className="h-4 w-4 text-sky-400" />
               </CardHeader>
               <CardContent>
-                <div className={`font-bold text-foreground ${isMobile ? 'text-3xl' : 'text-3xl'}`}>{mockData.stats.totalSales}</div>
-                <p className="text-xs text-tech-blue-400">
-                  {isMobile ? `${mockData.stats.conversionRate}%` : `Taxa de conversão: ${mockData.stats.conversionRate}%`}
-                </p>
+                <div className={`font-bold text-foreground ${isMobile ? 'text-3xl' : 'text-3xl'}`}>{(me?.total_sales_count ?? 0).toLocaleString('pt-BR')}</div>
+                {!isMobile && (
+                  <p className="text-xs text-tech-blue-400">Quantidade de vendas realizadas</p>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  {isMobile ? 'Faturamento' : 'Faturamento Total'}
+                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                  Comissão
                 </CardTitle>
-                <DollarSign className="h-4 w-4 text-neon-cyan" />
+                <DollarSign className="h-4 w-4 text-emerald-400" />
               </CardHeader>
               <CardContent>
-                <div className={`font-bold text-foreground ${isMobile ? 'text-xl' : 'text-3xl'}`}>
-                  R$ {isMobile 
-                    ? mockData.stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) 
-                    : mockData.stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-                  }
-                </div>
-                <p className="text-xs text-tech-blue-400">
-                  {isMobile ? 'Seus links' : 'Vendas realizadas pelos seus links'}
-                </p>
+                <div className={`font-bold text-foreground ${isMobile ? 'text-xl' : 'text-3xl'}`}>R$ {(me?.total_commissions ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                {!isMobile && (
+                  <p className="text-xs text-tech-blue-400">Comissão total acumulada</p>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  {isMobile ? 'Comissão' : 'Sua Comissão'}
+                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                  Saldo disponível
                 </CardTitle>
-                <DollarSign className="h-4 w-4 text-neon-purple" />
+                <DollarSign className="h-4 w-4 text-blue-400" />
               </CardHeader>
               <CardContent>
-                <div className={`font-bold text-neon-blue ${isMobile ? 'text-xl' : 'text-3xl'}`}>
-                  R$ {isMobile 
-                    ? mockData.stats.commission.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) 
-                    : mockData.stats.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-                  }
-                </div>
-                <p className="text-xs text-tech-blue-400">
-                  {isMobile ? '15%' : '15% das vendas realizadas'}
-                </p>
+                <div className={`font-bold text-neon-blue ${isMobile ? 'text-xl' : 'text-3xl'}`}>R$ {(me?.pending_payment ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                {!isMobile && (
+                  <p className="text-xs text-tech-blue-400">Saldo disponível para saque</p>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  {isMobile ? 'Clicks' : 'Total de Clicks'}
+                <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                  Total de Clicks
                 </CardTitle>
-                <MousePointer className="h-4 w-4 text-neon-blue" />
+                <MousePointer className="h-4 w-4 text-violet-400" />
               </CardHeader>
               <CardContent>
-                <div className={`font-bold text-foreground ${isMobile ? 'text-3xl' : 'text-3xl'}`}>{mockData.stats.clicks}</div>
-                <p className="text-xs text-tech-blue-400">
-                  {isMobile ? 'Seus links' : 'Clicks nos seus links'}
-                </p>
+                <div className={`font-bold text-foreground ${isMobile ? 'text-3xl' : 'text-3xl'}`}>{(me?.total_clicks ?? 0).toLocaleString('pt-BR')}</div>
+                {!isMobile && (
+                  <p className="text-xs text-tech-blue-400">Clicks nos seus links</p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -343,7 +375,7 @@ const InfluencerDashboard = () => {
                   <CardContent>
                     <div className={isMobile ? "h-[200px]" : "h-[250px]"}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={mockData.salesChart}>
+                        <LineChart data={[]}> {/* placeholder gráfico */}
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--tech-blue-700))" opacity={0.3} />
                           <XAxis 
                             dataKey="date" 
@@ -386,39 +418,28 @@ const InfluencerDashboard = () => {
             <TabsContent value="sales" className="space-y-4 md:space-y-6">
               <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
                 <CardHeader>
-                  <CardTitle className="text-foreground">Histórico de Vendas</CardTitle>
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-sky-400" />
+                    Histórico de Vendas
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 md:p-6">
                   {isMobile ? (
                     <ScrollArea className="h-[400px]">
                       <div className="space-y-3 p-4">
-                        {mockData.recentSales.map((sale) => (
-                          <Card key={sale.id} className="bg-tech-blue-950/30 border-tech-blue-700/30 p-4">
+                        {mySales?.map((sale) => (
+                          <Card key={sale.id} className="bg-tech-blue-950/30 border-tech-blue-700/40 p-4 shadow-sm">
                             <div className="space-y-2">
                               <div className="flex justify-between items-start">
                                 <div>
                                   <p className="font-medium text-foreground text-sm">{sale.product}</p>
                                   <p className="text-xs text-tech-blue-300">{sale.customer}</p>
                                 </div>
-                                <Badge 
-                                  variant={sale.status === 'paid' ? 'default' : 'secondary'}
-                                  className={sale.status === 'paid' 
-                                    ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/30' 
-                                    : 'bg-tech-blue-800/30 text-tech-blue-300 border-tech-blue-700/30'
-                                  }
-                                >
-                                  {sale.status === 'paid' ? 'Pago' : 'Pendente'}
-                                </Badge>
                               </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-tech-blue-300">Valor:</span>
-                                <span className="text-foreground font-medium">
-                                  R$ {sale.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
+                              {/* Valor da venda ocultado para o influencer */}
                               <div className="flex justify-between text-sm">
                                 <span className="text-tech-blue-300">Comissão:</span>
-                                <span className="text-neon-blue font-semibold">
+                                <span className="text-neon-blue font-mono font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neon-blue/10 border border-neon-blue/30">
                                   R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -436,44 +457,31 @@ const InfluencerDashboard = () => {
                   ) : (
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-tech-blue-700/30">
-                          <TableHead className="text-tech-blue-300">ID</TableHead>
-                          <TableHead className="text-tech-blue-300">Produto</TableHead>
-                          <TableHead className="text-tech-blue-300">Cliente</TableHead>
-                          <TableHead className="text-tech-blue-300">Valor</TableHead>
-                          <TableHead className="text-tech-blue-300">Comissão</TableHead>
-                          <TableHead className="text-tech-blue-300">Data</TableHead>
-                          <TableHead className="text-tech-blue-300">Status</TableHead>
+                        <TableRow className="border-tech-blue-700/30 bg-tech-blue-900/20">
+                          <TableHead className="text-tech-blue-300 uppercase tracking-wider text-[11px]">ID</TableHead>
+                          <TableHead className="text-tech-blue-300 uppercase tracking-wider text-[11px]">Produto</TableHead>
+                          <TableHead className="text-tech-blue-300 uppercase tracking-wider text-[11px]">Cliente</TableHead>
+                          {/* Valor da venda ocultado para o influencer */}
+                          <TableHead className="text-tech-blue-300 uppercase tracking-wider text-[11px]">Comissão</TableHead>
+                          <TableHead className="text-tech-blue-300 uppercase tracking-wider text-[11px]">Data</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {mockData.recentSales.map((sale) => (
-                          <TableRow key={sale.id} className="border-tech-blue-700/20 hover:bg-tech-blue-800/20">
-                            <TableCell className="font-medium text-foreground">{sale.id}</TableCell>
-                            <TableCell className="text-tech-blue-200">{sale.product}</TableCell>
+                        {mySales?.map((sale) => (
+                          <TableRow key={sale.id} className="border-tech-blue-700/20 hover:bg-tech-blue-800/20 even:bg-tech-blue-900/10">
+                            <TableCell className="font-medium text-tech-blue-200 font-mono">{`${sale.id.slice(0, 8)}…${sale.id.slice(-4)}`}</TableCell>
+                            <TableCell className="text-foreground font-medium">{sale.product}</TableCell>
                             <TableCell className="text-tech-blue-300">{sale.customer}</TableCell>
-                            <TableCell className="text-foreground">
-                              R$ {sale.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </TableCell>
-                            <TableCell className="text-neon-blue font-semibold">
+                            {/* Valor da venda ocultado para o influencer */}
+                            <TableCell className="text-neon-blue font-mono font-semibold">
                               R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-tech-blue-300">
                               {new Date(sale.date).toLocaleDateString('pt-BR')}
                             </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={sale.status === 'paid' ? 'default' : 'secondary'}
-                                className={sale.status === 'paid' 
-                                  ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/30' 
-                                  : 'bg-tech-blue-800/30 text-tech-blue-300 border-tech-blue-700/30'
-                                }
-                              >
-                                {sale.status === 'paid' ? 'Pago' : 'Pendente'}
-                              </Badge>
-                            </TableCell>
                           </TableRow>
                         ))}
+                          {/* Sem status por enquanto */}
                       </TableBody>
                     </Table>
                   )}
@@ -483,26 +491,82 @@ const InfluencerDashboard = () => {
 
             <TabsContent value="links" className="space-y-6">
               <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Solicitação de Saque</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <DollarSign className="h-6 w-6 text-neon-blue" />
+                    Solicitação de Saque
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-tech-blue-300">Solicite o saque das suas comissões acumuladas via PIX.</p>
-                  <div className="bg-tech-blue-950/30 border border-tech-blue-700/30 rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-tech-blue-300">Saldo disponível para saque:</span>
-                      <span className="text-lg font-bold text-neon-blue">
-                        R$ {mockData.stats.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-xl border border-tech-blue-700/40 bg-tech-blue-950/40 p-3">
+                      <div className="text-xs text-tech-blue-300">Saldo disponível</div>
+                      <div className="text-lg font-bold text-neon-blue">R$ {(me?.pending_payment ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                     </div>
-                    <p className="text-xs text-tech-blue-400">
-                      Valor mínimo para saque: R$ 50,00
-                    </p>
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+                      <div className="text-xs text-emerald-300">Método</div>
+                      <div className="text-sm text-foreground">PIX</div>
+                    </div>
+                    <div className="rounded-xl border border-tech-blue-700/30 bg-tech-blue-950/30 p-3">
+                      <div className="text-xs text-tech-blue-300">Mínimo</div>
+                      <div className="text-sm text-foreground">R$ 50,00</div>
+                    </div>
                   </div>
-                  <Button className="border-tech-blue-700/50" onClick={() => navigate('/dashboard/withdraw/method')}>
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Solicitar Saque
+                  <div className="text-xs text-tech-blue-300">
+                    Horário de solicitação: 9h às 19h (Brasília)
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-between gap-3">
+                    <p className="text-tech-blue-300 text-sm">Solicite o saque das suas comissões acumuladas via PIX.</p>
+                    <Button
+                      className="border-tech-blue-700/50"
+                      onClick={() => navigate('/dashboard/withdraw/method')}
+                      disabled={!withinBusinessHours}
+                      title={!withinBusinessHours ? 'Fora do horário: disponível das 9h às 19h (Brasília)' : undefined}
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {withinBusinessHours ? 'Solicitar Saque' : 'Fora do horário'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Histórico de Saques Pagos */}
+              <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-foreground">Histórico de Saques Pagos</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => refetchPaid()} disabled={fetchingPaid}>
+                    {fetchingPaid ? 'Atualizando...' : 'Atualizar'}
                   </Button>
+                </CardHeader>
+                <CardContent>
+                  {loadingPaid ? (
+                    <div className="text-tech-blue-300">Carregando...</div>
+                  ) : paidError ? (
+                    <div className="text-red-400">Erro: {paidErrObj instanceof Error ? paidErrObj.message : String(paidErrObj)}</div>
+                  ) : paidRows.length === 0 ? (
+                    <div className="text-tech-blue-300">Você ainda não possui saques pagos.</div>
+                  ) : (
+                    <div className="rounded-md border border-tech-blue-700/30 overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-tech-blue-700/30">
+                            <TableHead className="text-tech-blue-300">Data</TableHead>
+                            <TableHead className="text-tech-blue-300 hidden sm:table-cell">Método</TableHead>
+                            <TableHead className="text-tech-blue-300">Valor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paidRows.map((w, idx) => (
+                            <TableRow key={idx} className="border-tech-blue-700/20 hover:bg-tech-blue-800/20">
+                              <TableCell className="text-foreground whitespace-nowrap">{formatDateTime(w.paid_at)}</TableCell>
+                              <TableCell className="text-tech-blue-200 hidden sm:table-cell">{w.method}</TableCell>
+                              <TableCell className="text-foreground font-semibold whitespace-nowrap">{formatBRL(w.amount)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

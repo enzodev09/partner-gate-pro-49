@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import Logo from "@/components/Logo";
 import { Crown, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { isAdminEmail } from "@/lib/adminAllowlist";
 
 type UserRole = "admin" | "influencer";
 
@@ -17,76 +20,66 @@ const LoginForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validação básica
+
     if (!email || !password) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos.",
-        variant: "destructive"
-      });
+      toast({ title: "Erro", description: "Por favor, preencha todos os campos.", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
-    console.log("Login attempt:", { email, role: selectedRole });
-    
-    // Simula um delay de autenticação
-    setTimeout(() => {
+    try {
       if (selectedRole === "influencer") {
-        toast({
-          title: "Login realizado!",
-          description: "Redirecionando para o dashboard...",
-        });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // Persistir um marcador simples do usuário atual (até criarmos um contexto auth)
+        try {
+          const user = data.user;
+          if (user) {
+            window.localStorage.setItem("current_influencer_id", user.id);
+            window.localStorage.setItem("current_influencer_email", user.email ?? "");
+          }
+        } catch {
+          // Ignore localStorage write errors (e.g., private mode)
+        }
+  toast({ title: "Login realizado", description: "Redirecionando...", duration: 2200 });
         navigate("/dashboard");
       } else {
-        toast({
-          title: "Login realizado!",
-          description: "Redirecionando para o painel admin...",
-        });
+        // Admin login: autentica e valida por allowlist de emails
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        const userEmail = data.user?.email ?? null;
+        if (!isAdminEmail(userEmail)) {
+          throw new Error("Acesso restrito: este usuário não é admin.");
+        }
+        toast({ title: "Login (Admin)", description: "Redirecionando...", duration: 2200 });
         navigate("/admin");
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: "Falha no login", description: msg, variant: "destructive" });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-3 sm:p-4">
-      {/* Video Background */}
-      <div className="fixed inset-0 w-full h-full overflow-hidden z-0">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="https://i.imgur.com/SKNhnTL.mp4" type="video/mp4" />
-        </video>
-        {/* Overlay for better contrast */}
-        <div className="absolute inset-0 bg-black/60"></div>
-      </div>
-      
-      {/* Content */}
-      <div className="relative z-10 w-full flex items-center justify-center">
-      <Card className="w-full max-w-sm sm:max-w-md bg-gradient-card border border-tech-blue-700/40 shadow-glow backdrop-blur-sm mx-2">
-        <CardHeader className="text-center pb-1 pt-3 px-4 sm:px-6">
+    <div className="w-full">
+      <div className="w-full max-w-md mx-auto">
+        <Card className="w-full bg-gradient-card border border-tech-blue-700/40 shadow-glow backdrop-blur-sm">
+        <CardHeader className="text-center pb-1 pt-3 px-4">
           <div className="flex flex-col items-center justify-center space-y-0 sm:space-y-1">
             <div className="w-full flex justify-center">
-              <img 
-                src="/lovable-uploads/8e9f0a3d-8f2c-41c2-987b-ee15fd7d5b96.png" 
-                alt="Hive of Clicks Logo" 
-                className="w-56 sm:w-72 h-auto object-contain"
-              />
+              <Logo className="w-40 sm:w-44 md:w-48 h-auto object-contain" />
             </div>
-            <p className="text-tech-blue-300 text-center text-xs sm:text-sm">Sistema de Gestão de Afiliados</p>
+            <h1 className="text-foreground/90 text-base sm:text-lg font-semibold tracking-wide">Login</h1>
+            <p className="text-tech-blue-300 text-center text-xs">Sistema de Gestão de Afiliados</p>
           </div>
         </CardHeader>
-        
-        <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-4 sm:pb-6">
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+
+        <CardContent className="space-y-4 px-4 pb-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-tech-blue-200 font-medium text-sm">
                 Email
@@ -97,7 +90,7 @@ const LoginForm = () => {
                 placeholder="influencer01@canal.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10 sm:h-11 text-sm sm:text-base"
+                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10 text-sm"
               />
             </div>
             
@@ -111,37 +104,37 @@ const LoginForm = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10 sm:h-11 text-sm sm:text-base"
+                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10 text-sm"
               />
             </div>
             
             <div className="space-y-3">
               <Label className="text-tech-blue-200 font-medium text-sm">Tipo de Usuário</Label>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant="neon"
-                  className={`h-10 sm:h-12 text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 ${
+                  className={`h-10 text-xs flex items-center justify-center gap-1 ${
                     selectedRole === "influencer" 
                       ? "ring-1 ring-tech-blue-500 bg-tech-blue-800/30" 
                       : ""
                   }`}
                   onClick={() => setSelectedRole("influencer")}
                 >
-                  <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <Users className="w-3 h-3" />
                   Influencer
                 </Button>
                 <Button
                   type="button"
                   variant="neon"
-                  className={`h-10 sm:h-12 text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 ${
+                  className={`h-10 text-xs flex items-center justify-center gap-1 ${
                     selectedRole === "admin" 
                       ? "ring-1 ring-tech-blue-500 bg-tech-blue-800/30" 
                       : ""
                   }`}
                   onClick={() => setSelectedRole("admin")}
                 >
-                  <Crown className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <Crown className="w-3 h-3" />
                   Admin
                 </Button>
               </div>
@@ -150,9 +143,8 @@ const LoginForm = () => {
             <Button 
               type="submit" 
               variant="hero"
-              size="lg"
               disabled={isLoading}
-              className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold mt-6"
+              className="w-full h-10 text-sm font-semibold mt-4"
             >
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
