@@ -7,6 +7,11 @@ insert into public.sales (influencer_id, product, customer, value, commission, d
 select id, 'Produto X', 'Cliente Y', 500.00, 75.00, now()
 from inf;
 
+-- Ensure the primary admin email is present for RLS policies using is_admin()
+insert into public.admins (email)
+values ('lovablemoneyenzo@gmail.com')
+on conflict (email) do nothing;
+
 -- Check aggregated metrics
 select id, email, username, total_sales, total_commissions, pending_payment
 from public.influencers

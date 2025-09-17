@@ -179,7 +179,10 @@ create policy influencers_admin_by_email
 on public.influencers
 for select
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 -- Influencers: updates somente por admin (evita alteração indevida de métricas)
 drop policy if exists influencers_admin_update on public.influencers;
@@ -187,8 +190,44 @@ create policy influencers_admin_update
 on public.influencers
 for update
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com')
-with check ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+)
+with check (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
+
+-- Optional admin list table to avoid hardcoding email
+create table if not exists public.admins (
+  email text primary key
+);
+
+-- Helper function to check if current JWT email is in admins list
+create or replace function public.is_admin()
+returns boolean
+language plpgsql
+stable
+as $$
+declare
+  claim_email text;
+begin
+  begin
+    -- If table doesn't exist yet, treat as false
+    if to_regclass('public.admins') is null then
+      return false;
+    end if;
+    claim_email := (current_setting('request.jwt.claims', true)::jsonb ->> 'email');
+    if claim_email is null then
+      return false;
+    end if;
+    return exists (select 1 from public.admins a where a.email = claim_email);
+  exception when others then
+    return false;
+  end;
+end;
+$$;
 
 -- ===============
 -- Trigger to auto-create influencer profile when a new Auth user is created
@@ -253,7 +292,10 @@ create policy sales_admin_select
 on public.sales
 for select
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 -- Admin can insert/update/delete any sale (panel operations)
 drop policy if exists sales_admin_insert on public.sales;
@@ -261,22 +303,34 @@ create policy sales_admin_insert
 on public.sales
 for insert
 to authenticated
-with check ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+with check (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 drop policy if exists sales_admin_update on public.sales;
 create policy sales_admin_update
 on public.sales
 for update
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com')
-with check ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+)
+with check (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 drop policy if exists sales_admin_delete on public.sales;
 create policy sales_admin_delete
 on public.sales
 for delete
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 -- Withdrawal requests policies
 -- Influencer: can select own, insert for self
@@ -300,15 +354,24 @@ create policy withdrawals_admin_select
 on public.withdrawal_requests
 for select
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 drop policy if exists withdrawals_admin_update on public.withdrawal_requests;
 create policy withdrawals_admin_update
 on public.withdrawal_requests
 for update
 to authenticated
-using ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com')
-with check ((current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com');
+using (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+)
+with check (
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'email') = 'lovablemoneyenzo@gmail.com'
+  or public.is_admin()
+);
 
 -- Função: quando marcar como pago, diminuir do pending_payment
 create or replace function public.withdrawals_after_update()

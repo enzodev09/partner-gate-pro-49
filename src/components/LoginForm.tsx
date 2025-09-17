@@ -43,17 +43,20 @@ const LoginForm = () => {
         } catch {
           // Ignore localStorage write errors (e.g., private mode)
         }
-  toast({ title: "Login realizado", description: "Redirecionando...", duration: 2200 });
+        toast({ title: "Login realizado", description: "Redirecionando...", duration: 2200 });
         navigate("/dashboard");
       } else {
         // Admin login: autentica e valida por allowlist de emails
+        // Admin: também autentica no Supabase para que as policies (RLS) reconheçam o admin
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        const userEmail = data.user?.email ?? null;
-        if (!isAdminEmail(userEmail)) {
-          throw new Error("Acesso restrito: este usuário não é admin.");
-        }
-        toast({ title: "Login (Admin)", description: "Redirecionando...", duration: 2200 });
+        try {
+          const user = data.user;
+          if (user) {
+            window.localStorage.setItem("current_admin_email", user.email ?? "");
+          }
+        } catch {}
+        toast({ title: "Login (Admin)", description: "Redirecionando para o painel admin..." });
         navigate("/admin");
       }
     } catch (err: unknown) {
@@ -90,7 +93,7 @@ const LoginForm = () => {
                 placeholder="influencer01@canal.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10 text-sm"
+                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10"
               />
             </div>
             
@@ -104,7 +107,7 @@ const LoginForm = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10 text-sm"
+                className="bg-tech-blue-950/50 border border-tech-blue-700/50 text-foreground placeholder:text-tech-blue-400 focus:border-tech-blue-500 focus:ring-1 focus:ring-tech-blue-500 transition-colors h-10"
               />
             </div>
             
