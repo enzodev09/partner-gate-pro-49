@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+// Recharts removed (chart no longer shown)
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient"; // Import supabase client
@@ -271,7 +271,7 @@ const InfluencerDashboard = () => {
             <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className={`font-medium text-tech-blue-300 ${isMobile ? 'text-sm' : 'text-sm'}`}>
-                  Comissão
+                  {isMobile ? 'Saldo total' : 'Comissão'}
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-emerald-400" />
               </CardHeader>
@@ -367,51 +367,7 @@ const InfluencerDashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* Gráfico de Receitas */}
-                <Card className="bg-gradient-card border-tech-blue-700/40 shadow-glow">
-                  <CardHeader>
-                    <CardTitle className="text-foreground">Gráfico de Receitas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className={isMobile ? "h-[200px]" : "h-[250px]"}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={[]}> {/* placeholder gráfico */}
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--tech-blue-700))" opacity={0.3} />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="hsl(var(--tech-blue-300))" 
-                            fontSize={isMobile ? 10 : 12}
-                            tick={{ fill: "hsl(var(--tech-blue-300))" }}
-                          />
-                          <YAxis 
-                            stroke="hsl(var(--tech-blue-300))" 
-                            fontSize={isMobile ? 10 : 12}
-                            tick={{ fill: "hsl(var(--tech-blue-300))" }}
-                            tickFormatter={(value) => `R$ ${value}`}
-                          />
-                          <Tooltip 
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--tech-blue-950))",
-                              border: "1px solid hsl(var(--tech-blue-700))",
-                              borderRadius: "8px",
-                              color: "hsl(var(--foreground))"
-                            }}
-                            formatter={(value) => [`R$ ${value}`, "Receita"]}
-                            labelStyle={{ color: "hsl(var(--tech-blue-300))" }}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="receita" 
-                            stroke="hsl(var(--neon-blue))" 
-                            strokeWidth={2}
-                            dot={{ fill: "hsl(var(--neon-blue))", strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, stroke: "hsl(var(--neon-blue))", strokeWidth: 2 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Gráfico de Receitas removido */}
               </div>
             </TabsContent>
 
