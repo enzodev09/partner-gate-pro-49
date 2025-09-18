@@ -14,6 +14,8 @@ create table if not exists public.influencers (
   social_twitter text,
   social_facebook text,
   affiliate_link text,
+  -- Admin-configurable WhatsApp support URL (e.g., https://wa.me/5511999999999?text=...)
+  support_whatsapp_url text,
   -- total_sales represents faturamento (valor total das vendas)
   total_sales numeric(12,2) not null default 0,
   total_commissions numeric(12,2) not null default 0,
@@ -24,6 +26,10 @@ create table if not exists public.influencers (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- In case the table already exists without the column (idempotent migration)
+alter table if exists public.influencers
+  add column if not exists support_whatsapp_url text;
 
 -- Helpful index for lookups by email/username
 create index if not exists idx_influencers_email on public.influencers (email);

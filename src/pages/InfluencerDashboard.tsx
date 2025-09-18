@@ -121,13 +121,18 @@ const InfluencerDashboard = () => {
   };
 
   const handleWhatsAppSupport = () => {
-    // Número padrão do suporte
+    // 1) Se admin configurou uma URL específica para este influencer, priorize-a
+    const configured = (me as any)?.support_whatsapp_url as string | null | undefined;
+    if (configured && typeof configured === 'string' && configured.trim().length > 0) {
+      window.open(configured.trim(), '_blank');
+      return;
+    }
+
+    // 2) Regra especial para Aldemar
     const defaultNumber = "5511999999999";
-    // Número solicitado para o usuário específico
     const aldemarNumber = "5511963107364";
     const message = "Olá! Preciso de suporte no Hive of Clicks.";
 
-    // Normaliza string: sem acentos, minúsculas, trim
     const normalize = (s?: string | null) =>
       (s ?? "")
         .normalize("NFD")
@@ -138,22 +143,15 @@ const InfluencerDashboard = () => {
     const full = normalize(me?.full_name);
     const user = normalize(me?.username);
     const mail = normalize(me?.email);
-
-    // Condição: usuário "aldemar batista lisboa"
-    const isAldemar =
-      full === "aldemar batista lisboa" ||
-      user === "aldemar batista lisboa" ||
-      mail.startsWith("aldemar");
-
-    // Para Aldemar, abrir diretamente o link fornecido (sem mensagem adicional)
+    const isAldemar = full === "aldemar batista lisboa" || user === "aldemar batista lisboa" || mail.startsWith("aldemar");
     if (isAldemar) {
-      window.open(`https://wa.me/${aldemarNumber}` , "_blank");
+      window.open(`https://wa.me/${aldemarNumber}`, '_blank');
       return;
     }
 
-    // Demais usuários: número padrão com mensagem pré-preenchida
+    // 3) Fallback para número padrão com mensagem
     const whatsappUrl = `https://wa.me/${defaultNumber}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank");
+    window.open(whatsappUrl, '_blank');
   };
 
   // Histórico de saques pagos (simples: por enquanto, lista todos pagos)

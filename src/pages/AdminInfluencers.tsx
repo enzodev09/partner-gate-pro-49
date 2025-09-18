@@ -20,6 +20,7 @@ type InfluencerRow = {
   username: string;
   full_name: string | null;
   affiliate_link: string | null;
+  support_whatsapp_url?: string | null;
   total_sales: number;
   total_commissions: number;
   total_clicks: number;
@@ -78,6 +79,7 @@ export default function AdminInfluencers() {
           full_name: selectedInfluencer.full_name,
           username: selectedInfluencer.username,
           affiliate_link: selectedInfluencer.affiliate_link,
+          support_whatsapp_url: selectedInfluencer.support_whatsapp_url ?? null,
         })
         .eq("id", selectedInfluencer.id);
       if (error) throw error;
@@ -96,6 +98,7 @@ export default function AdminInfluencers() {
         .from("influencers")
         .update({
           affiliate_link: selectedInfluencer.affiliate_link,
+          support_whatsapp_url: selectedInfluencer.support_whatsapp_url ?? null,
           pending_payment: selectedInfluencer.pending_payment,
           total_sales: selectedInfluencer.total_sales,
           total_commissions: selectedInfluencer.total_commissions,
@@ -325,6 +328,15 @@ export default function AdminInfluencers() {
                                       <div>
                                         <Label className="text-tech-blue-300">Link de Afiliado</Label>
                                         <Input value={selectedInfluencer.affiliate_link ?? ""} onChange={(e) => setSelectedInfluencer({ ...selectedInfluencer, affiliate_link: e.target.value })} placeholder="https://hiveofclicks.com/ref/usuario" className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground" />
+                                      </div>
+                                      <div>
+                                        <Label className="text-tech-blue-300">WhatsApp de Suporte (opcional)</Label>
+                                        <Input
+                                          value={selectedInfluencer.support_whatsapp_url ?? ""}
+                                          onChange={(e) => setSelectedInfluencer({ ...selectedInfluencer, support_whatsapp_url: e.target.value })}
+                                          placeholder="https://wa.me/5511999999999?text=Ol%C3%A1"
+                                          className="bg-tech-blue-900/50 border-tech-blue-700 text-foreground"
+                                        />
                                       </div>
                                     </div>
                                     <div className="flex space-x-2 pt-4">
