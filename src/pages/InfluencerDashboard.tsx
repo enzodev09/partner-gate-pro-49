@@ -121,10 +121,39 @@ const InfluencerDashboard = () => {
   };
 
   const handleWhatsAppSupport = () => {
-    const phoneNumber = "5511999999999"; // Substitua pelo número real
+    // Número padrão do suporte
+    const defaultNumber = "5511999999999";
+    // Número solicitado para o usuário específico
+    const aldemarNumber = "5511963107364";
     const message = "Olá! Preciso de suporte no Hive of Clicks.";
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+
+    // Normaliza string: sem acentos, minúsculas, trim
+    const normalize = (s?: string | null) =>
+      (s ?? "")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase()
+        .trim();
+
+    const full = normalize(me?.full_name);
+    const user = normalize(me?.username);
+    const mail = normalize(me?.email);
+
+    // Condição: usuário "aldemar batista lisboa"
+    const isAldemar =
+      full === "aldemar batista lisboa" ||
+      user === "aldemar batista lisboa" ||
+      mail.startsWith("aldemar");
+
+    // Para Aldemar, abrir diretamente o link fornecido (sem mensagem adicional)
+    if (isAldemar) {
+      window.open(`https://wa.me/${aldemarNumber}` , "_blank");
+      return;
+    }
+
+    // Demais usuários: número padrão com mensagem pré-preenchida
+    const whatsappUrl = `https://wa.me/${defaultNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   // Histórico de saques pagos (simples: por enquanto, lista todos pagos)
