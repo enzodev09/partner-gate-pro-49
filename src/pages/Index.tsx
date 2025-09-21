@@ -1,5 +1,4 @@
 import LoginForm from "@/components/LoginForm";
-import { Button } from "@/components/ui/button";
 
 export default function Index() {
   // Background video (RIGHT column)
@@ -12,15 +11,6 @@ export default function Index() {
       <div className="relative flex items-center justify-center px-4 sm:px-6 lg:px-10 overflow-hidden bg-gradient-to-b from-[#0A1630] via-[#0A1B3F] to-[#0A1630]">
         <div className="w-full max-w-sm sm:max-w-md">
           <LoginForm />
-          <div className="mt-6">
-            <Button
-              onClick={() => window.open("https://ale-chaves-confeccoes.pay.yampi.com.br/r/C2MG7LA0QX", "_blank")}
-              variant="neon"
-              className="w-full"
-            >
-              Comprar na loja
-            </Button>
-          </div>
         </div>
       </div>
 
