@@ -97,6 +97,11 @@ const InfluencerDashboard = () => {
 
   const affiliateLink = me?.affiliate_link || "";
 
+  const handleBuyClick = () => {
+    const STORE_URL = "https://ale-chaves-confeccoes.pay.yampi.com.br/r/C2MG7LA0QX";
+    window.open(STORE_URL, '_blank');
+  };
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(affiliateLink);
     setCopied(true);
@@ -391,6 +396,21 @@ const InfluencerDashboard = () => {
                     <p className="text-sm text-tech-blue-400">
                       Compartilhe este link para ganhar comissão em cada venda realizada
                     </p>
+                    <div>
+                      <Button
+                        onClick={handleBuyClick}
+                        variant="neon"
+                        className="w-full sm:w-auto"
+                      >
+                        {/* Shopping cart icon */}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2">
+                          <circle cx="9" cy="21" r="1" />
+                          <circle cx="20" cy="21" r="1" />
+                          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h7.72a2 2 0 0 0 2-1.61L23 6H6" />
+                        </svg>
+                        Comprar na loja
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
